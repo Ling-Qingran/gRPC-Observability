@@ -1,34 +1,99 @@
+// main.go
 package main
 
 import (
 	"context"
-	"github.com/Ling-Qingran/gRPC-Observability/user"
-	"google.golang.org/grpc"
+	"errors"
 	"log"
 	"net"
+
+	"github.com/Ling-Qingran/gRPC-Observability/user"
+	"google.golang.org/grpc"
 )
 
-type myUserServer struct {
-	user.UnimplementedUserServer
+type userServiceServer struct {
+	user.UnimplementedUserServiceServer
 }
 
-func (s myUserServer) Create(ctx context.Context, req *user.CreateRequest) (*user.CreateResponse, error) {
-	return &user.CreateResponse{
-		Csv: []byte("test"),
-	}, nil
+var userInputs = []user.User{
+	{Name: "Jack", Age: 21, CommuteMethod: "Bike", College: "Boston University", Hobbies: "Golf"},
+	{Name: "David", Age: 21, CommuteMethod: "Bike", College: "Boston University", Hobbies: "Golf"},
+	{Name: "Austin", Age: 21, CommuteMethod: "Bike", College: "Boston University", Hobbies: "Golf"},
+}
+
+func (*userServiceServer) GetUser(ctx context.Context, req *user.GetUserRequest) (*user.User, error) {
+	name := req.GetName()
+	userInput, err := getUserByName(name)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return userInput, nil
+}
+
+func (*userServiceServer) UpdateUser(ctx context.Context, req *user.UpdateUserRequest) (*user.User, error) {
+	name := req.GetName()
+	index, err := getUserByNameWithIndex(name)
+
+	if err != nil {
+		return nil, err
+	}
+
+	updatedUser := req.GetUser()
+	// Update the user record with the new data
+	userInputs[index] = *updatedUser
+
+	return updatedUser, nil
+}
+
+func (*userServiceServer) DeleteUser(ctx context.Context, req *user.DeleteUserRequest) (*user.DeleteUserResponse, error) {
+	name := req.GetName()
+	index, err := getUserByNameWithIndex(name)
+
+	if err != nil {
+		return &user.DeleteUserResponse{Success: false}, err
+	}
+
+	// Remove the user from the slice
+	userInputs = append(userInputs[:index], userInputs[index+1:]...)
+
+	return &user.DeleteUserResponse{Success: true}, nil
+}
+
+func (*userServiceServer) CreateUser(ctx context.Context, req *user.CreateUserRequest) (*user.User, error) {
+	newUser := req.GetUser()
+	userInputs = append(userInputs, *newUser)
+
+	return newUser, nil
+}
+
+func getUserByName(name string) (*user.User, error) {
+	for i, t := range userInputs {
+		if t.Name == name {
+			return &userInputs[i], nil
+		}
+	}
+	return nil, errors.New("user not found")
+}
+
+func getUserByNameWithIndex(name string) (int, error) {
+	for i, t := range userInputs {
+		if t.Name == name {
+			return i, nil
+		}
+	}
+	return -1, errors.New("user not found")
 }
 
 func main() {
-	lis, err := net.Listen("tcp", ":8089")
+	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("Failed to listen: %v", err)
 	}
-	server := grpc.NewServer()
-	service := &myUserServer{}
-
-	user.RegisterUserServer(server, service)
-	err = server.Serve(lis)
-	if err != nil {
-		log.Fatalf("failed to serve: %v", err)
+	s := grpc.NewServer()
+	user.RegisterUserServiceServer(s, &userServiceServer{})
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("Failed to serve: %v", err)
 	}
 }
