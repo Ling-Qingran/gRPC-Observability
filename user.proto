@@ -3,7 +3,7 @@ option go_package = "github.com/Ling-Qingran/gRPC-Observability/user";
 
 message User {
   string name = 1;
-  int32 age = 2;
+  string age = 2;
   string commuteMethod = 3;
   string college = 4;
   string hobbies = 5;

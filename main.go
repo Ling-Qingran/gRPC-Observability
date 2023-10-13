@@ -24,7 +24,7 @@ type userServiceServer struct {
 }
 
 const (
-	spreadsheetID = "1akfYlxyW_6Mbvp1f6vDxNzyYMy8MqPdFHjWDpnq6G_4"
+	spreadsheetID = "10-CfbfktbeTSMV3tgnIKwaBquzw-RmjS13Tut9A32_s"
 	readRange     = "Sheet1"
 	writeRange    = "Sheet1"
 )
@@ -106,12 +106,6 @@ func init() {
 	}
 }
 
-var userInputs = []user.User{
-	{Name: "Jack", Age: 21, CommuteMethod: "Bike", College: "Boston University", Hobbies: "Golf"},
-	{Name: "David", Age: 21, CommuteMethod: "Bike", College: "Boston University", Hobbies: "Golf"},
-	{Name: "Austin", Age: 21, CommuteMethod: "Bike", College: "Boston University", Hobbies: "Golf"},
-}
-
 func (s *userServiceServer) GetUser(ctx context.Context, req *user.GetUserRequest) (*user.User, error) {
 	name := req.GetName()
 
@@ -129,7 +123,7 @@ func (s *userServiceServer) GetUser(ctx context.Context, req *user.GetUserReques
 		if row[0].(string) == name {
 			return &user.User{
 				Name:          row[0].(string),
-				Age:           int32(row[1].(float64)), // assuming age is stored as a number
+				Age:           row[1].(string), // assuming age is stored as a number
 				CommuteMethod: row[2].(string),
 				College:       row[3].(string),
 				Hobbies:       row[4].(string),
@@ -172,7 +166,7 @@ func (s *userServiceServer) UpdateUser(ctx context.Context, req *user.UpdateUser
 }
 
 func getRowNumberByName(name string) (int, error) {
-	resp, err := srv.Spreadsheets.Values.Get(spreadsheetID, "Sheet1!A:A").Do() // Assuming name is in column A
+	resp, err := srv.Spreadsheets.Values.Get(spreadsheetID, readRange).Do() // Assuming name is in column A
 	if err != nil {
 		return -1, err
 	}
@@ -235,7 +229,7 @@ func (s *userServiceServer) CreateUser(ctx context.Context, req *user.CreateUser
 	}
 
 	// Append the data to Google Sheets
-	_, err := srv.Spreadsheets.Values.Append(spreadsheetID, writeRange, valueRange).ValueInputOption("RAW").InsertDataOption("INSERT_ROWS").Do()
+	_, err := srv.Spreadsheets.Values.Append(spreadsheetID, writeRange, valueRange).ValueInputOption("RAW").Do()
 	if err != nil {
 		return nil, err
 	}
