@@ -240,7 +240,12 @@ func (s *userServiceServer) CreateUser(ctx context.Context, req *user.CreateUser
 }
 
 func main() {
-	lis, err := net.Listen("tcp", ":50051")
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // default port if not specified
+	}
+	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
