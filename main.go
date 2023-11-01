@@ -7,9 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Ling-Qingran/gRPC-Observability/user"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
@@ -250,30 +247,9 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	// Create a new registry.
-	registry := prometheus.NewRegistry()
-
-	// Initialize Prometheus metrics.
-	grpcMetrics := grpc_prometheus.NewServerMetrics()
-	grpcMetrics.EnableHandlingTimeHistogram()
-
-	// Register the metrics with our custom registry.
-	registry.MustRegister(grpcMetrics)
-
-	s := grpc.NewServer(
-		grpc.StreamInterceptor(grpcMetrics.StreamServerInterceptor()),
-		grpc.UnaryInterceptor(grpcMetrics.UnaryServerInterceptor()),
-	)
+	s := grpc.NewServer(grpc.UnaryInterceptor(MetricsInterceptor))
 
 	user.RegisterUserServiceServer(s, &userServiceServer{})
-
-	// Start the Prometheus metrics server.
-	http.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
-	go func() {
-		if err := http.ListenAndServe(":9092", nil); err != nil {
-			log.Fatalf("Failed to start Prometheus metrics server: %v", err)
-		}
-	}()
 
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
