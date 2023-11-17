@@ -301,9 +301,9 @@ func registerWithRegistry(name, host string, port int, servType string) {
 
 func main() {
 
-	serviceName := "Student-Info gRPC Service Local"
-	serviceHost := "localhost"
-	servicePort := 8080
+	serviceName := "Student-Info gRPC Service Cloud"
+	serviceHost := "grpc-observability-qimqpkozfa-ue.a.run.app"
+	servicePort := 443
 	serviceType := "gRPC"
 
 	// Register your service with the registry

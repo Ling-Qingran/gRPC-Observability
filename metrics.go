@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"log"
 	"net"
 	"time"
 )
@@ -37,7 +38,12 @@ func MetricsInterceptor(ctx context.Context, req interface{}, info *grpc.UnarySe
 	p, ok := peer.FromContext(ctx)
 	ipAddress := ""
 	if ok && p.Addr != net.Addr(nil) {
-		ipAddress = p.Addr.String()
+		host, _, err := net.SplitHostPort(p.Addr.String())
+		if err == nil {
+			ipAddress = host
+		} else {
+			log.Fatalf("Error while parsing peer address: %v", err)
+		}
 	}
 
 	// Increment request count
@@ -65,14 +71,14 @@ func writeMetrics(duration time.Duration, err error, reqSize, respSize int, meth
 	// Create a point to write (measurement name is "gRPCMetrics")
 	point := influxdb2.NewPoint(
 		"gRPCMetrics",
-		map[string]string{"unit": "seconds", "method": methodName, "statusCode": statusCode, "ipAddress": ipAddress, "userAgent": userAgent},
+		map[string]string{"unit": "seconds", "endpoint": methodName, "status_code": statusCode, "ip_address": ipAddress, "user_agent": userAgent},
 		map[string]interface{}{
-			"duration":     duration.Seconds(),
-			"error":        err != nil,
-			"requestSize":  reqSize,
-			"responseSize": respSize,
-			"requestCount": requestCount,
-			"errorRate":    errorRate,
+			"duration":      duration.Seconds(),
+			"error":         err != nil,
+			"request_size":  reqSize,
+			"response_size": respSize,
+			"request_count": requestCount,
+			"error_rate":    errorRate,
 		},
 		time.Now(),
 	)
