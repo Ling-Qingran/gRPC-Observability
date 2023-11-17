@@ -268,7 +268,7 @@ func registerWithRegistry(name, host string, port int, servType string) {
 		return
 	}
 
-	ticker := time.NewTicker(10 * time.Second) // Retry every 10 seconds
+	ticker := time.NewTicker(30 * time.Second) // Retry every 30 seconds
 	defer ticker.Stop()
 
 	for {
