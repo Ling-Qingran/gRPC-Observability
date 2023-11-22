@@ -254,7 +254,8 @@ func (s *userServiceServer) CreateUser(ctx context.Context, req *user.CreateUser
 }
 
 func registerWithRegistry(name, host string, port int, servType string) {
-	registryURL := "wss://centralreg-necuf5ddgq-ue.a.run.app/register" // WebSocket URL
+	//registryURL := "wss://centralreg-necuf5ddgq-ue.a.run.app/register" // WebSocket URL
+	registryURL := "ws://localhost:8090/register" // WebSocket URL
 	registrationData := Registration{
 		Name: name,
 		Host: host,
@@ -272,38 +273,39 @@ func registerWithRegistry(name, host string, port int, servType string) {
 	defer ticker.Stop()
 
 	for {
-		c, _, err := websocket.DefaultDialer.Dial(registryURL, nil)
-		if err != nil {
-			fmt.Println("Error connecting to WebSocket, retrying...:", err)
-		} else {
-			// Successfully connected, send registration data
+		select {
+		case <-ticker.C:
+			c, _, err := websocket.DefaultDialer.Dial(registryURL, nil)
+			if err != nil {
+				fmt.Println("Error connecting to WebSocket, retrying...:", err)
+				continue
+			}
+
 			err = c.WriteMessage(websocket.TextMessage, jsonData)
 			if err != nil {
 				fmt.Println("Error sending registration data, retrying...:", err)
-			} else {
-				// Read response
-				_, message, err := c.ReadMessage()
-				if err != nil {
-					fmt.Println("Error reading response, retrying...:", err)
-				} else {
-					fmt.Printf("Response from server: %s\n", message)
-					c.Close()
-					break // Exit the loop if registration is successful
-				}
+				c.Close()
+				continue
 			}
-			c.Close() // Close the connection in case of any error
-		}
 
-		// Wait for the next tick before retrying
-		<-ticker.C
+			_, message, err := c.ReadMessage()
+			if err != nil {
+				fmt.Println("Error reading response, retrying...:", err)
+			} else {
+				fmt.Printf("Response from server: %s\n", message)
+			}
+			c.Close()
+		}
 	}
 }
 
 func main() {
 
 	serviceName := "Student-Info gRPC Service Cloud"
-	serviceHost := "grpc-observability-qimqpkozfa-ue.a.run.app"
-	servicePort := 443
+	//serviceHost := "grpc-observability-qimqpkozfa-ue.a.run.app"
+	serviceHost := "localhost"
+	//servicePort := 443
+	servicePort := 8080
 	serviceType := "gRPC"
 
 	// Register your service with the registry

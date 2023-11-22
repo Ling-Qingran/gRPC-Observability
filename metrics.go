@@ -4,6 +4,7 @@ import (
 	"context"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -16,7 +17,7 @@ const (
 	serverURL      = "http://34.86.236.100/"
 	influxDBToken  = "I_UycfPULIG3VFr6eT-b0EzSIESMVb6rxZlS3n49zwHAcmpjPXQPS4u0eaZNY69hsWIVErE--T3lodcHQyx5rA=="
 	influxDBOrg    = "API-Observability"
-	influxDBBucket = "gRPC-Metrics"
+	influxDBBucket = "combined_metrics"
 )
 
 func MetricsInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
@@ -55,8 +56,18 @@ func MetricsInterceptor(ctx context.Context, req interface{}, info *grpc.UnarySe
 		errorRate = 1
 	}
 
+	// Extract metadata from context
+	md, ok := metadata.FromIncomingContext(ctx)
+	userAgent := ""
+	if ok {
+		// Metadata keys are normalized to lowercase
+		if ua, exists := md["user-agent"]; exists && len(ua) > 0 {
+			userAgent = ua[0]
+		}
+	}
+
 	// Record metrics to InfluxDB (or print to console, log, etc.)
-	writeMetrics(duration, err, reqSize, respSize, methodName, statusCode, requestCount, errorRate, ipAddress, "")
+	writeMetrics(duration, err, reqSize, respSize, methodName, statusCode, requestCount, errorRate, ipAddress, userAgent)
 	return resp, err
 }
 
@@ -71,7 +82,7 @@ func writeMetrics(duration time.Duration, err error, reqSize, respSize int, meth
 	// Create a point to write (measurement name is "gRPCMetrics")
 	point := influxdb2.NewPoint(
 		"gRPCMetrics",
-		map[string]string{"unit": "seconds", "endpoint": methodName, "status_code": statusCode, "ip_address": ipAddress, "user_agent": userAgent},
+		map[string]string{"endpoint": methodName, "ip_address": ipAddress, "user_agent": userAgent},
 		map[string]interface{}{
 			"duration":      duration.Seconds(),
 			"error":         err != nil,
